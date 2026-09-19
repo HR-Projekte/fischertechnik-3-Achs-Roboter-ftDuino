@@ -37,7 +37,7 @@ Bauteile für die Steuerung
 
 ## Software
 Das Steuerungsprogramm für das Hochregallager ist als Arduino-Sketch abgelegt.  
-[3-Achs-Roboter](Programme/3-Achs-Roboter/)
+[3-Achs-Roboter](Programme/)
 
 #### Weiterentwicklung
 
