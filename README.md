@@ -41,7 +41,7 @@ Das Steuerungsprogramm für das Hochregallager ist als Arduino-Sketch abgelegt.
 
 #### Weiterentwicklung
 
-Rückblickend wäre es insbesondere im Hinblick auf die Übersichtlichkeit sinnvoll gewesen, das Hauptprogramm `Hochregallager.ino` stärker modular aufzubauen. Während der Entwicklungsphase hat es sich jedoch als vorteilhaft erwiesen, die Funktionen zunächst gemeinsam in einer Datei zu entwickeln.
+Rückblickend wäre es insbesondere im Hinblick auf die Übersichtlichkeit sinnvoll gewesen, das Hauptprogramm `ft_3_Achs_Robot.ino` stärker modular aufzubauen. Während der Entwicklungsphase hat es sich jedoch als vorteilhaft erwiesen, die Funktionen zunächst gemeinsam in einer Datei zu entwickeln.
 
 Ein möglicher nächster Schritt wäre die Auslagerung der Displaysteuerung in eigene Dateien, beispielsweise:
 
