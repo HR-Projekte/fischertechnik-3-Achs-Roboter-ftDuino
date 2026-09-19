@@ -4,8 +4,8 @@
    speicherbare Einzel- und Dauerfahrten.
 
    Externe Startfunktion:
-   I6 startet Positionsspeicher A.
-   I5 startet Positionsspeicher B.
+   I7 startet Positionsspeicher A.
+   I6 startet Positionsspeicher B.
 
    Diese Version ist fuer den allgemeinen Betrieb des ft-3-Achs-Roboters
    vorgesehen und enthaelt keine spezielle Kopplungslogik fuer das
