@@ -1,20 +1,20 @@
 # fischertechnik 3-Achs-Roboter mit ftDuino
 Programme, Dokumentationen und weitere Unterlagen zu meinemfischertechnik 3-Achs-Roboter mit ftDuino-Steuerung.
-# fischertechnik Hochregallager mit ftDuino
 
-Programme, Dokumentationen und weitere Unterlagen zu meinem fischertechnik Hochregallager mit ftDuino-Steuerung.
-
-![fischertechnik 3-Achs-Roboter mit ftDuino(Bilder/ft-Roboter-Modell.png)
+![fischertechnik 3-Achs-Roboter mit ftDuino](Bilder/ft-Roboter-Modell.png)
 
 ## Projektbeschreibung
-Die hier vorgestellte Variante des fischertechnik Hochregallagers wird mit einem **ftDuino-Controller** gesteuert. An dessen I²C-Port werden eine **4×4-Matrixtastatur** und ein **0,96"-OLED-Display** betrieben.
+Die hier vorgestellte Variante des fischertechnik 3-Achs-Roboter wird mit einem **ftDuino-Controller** gesteuert. An dessen I²C-Port werden eine **4×4-Matrixtastatur** und ein **0,96"-OLED-Display** betrieben.
 
 Diese Steuerung bietet dem Modell folgende Eigenschaften:
 
 * kostengünstige Steuerungshardware
 * Programmierung auf Basis von C++ bzw. C
+* Display direkt am Modell
 * menügeführte Bedienung
+* Statusanzeige
 * vom Computer unabhängiger Betrieb
+* geeignet für Vorführungen und Ausstellungen
 
 ## Hardware
 Der mechanische Aufbau und die grundlegende Verdrahtung des Hochregallagers erfolgen entsprechend der fischertechnik Bauanleitung „ROBO TX Automation Robots“.
