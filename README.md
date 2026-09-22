@@ -55,7 +55,5 @@ Ein Flussdiagramm zur
 [Menüstruktur](https://github.com/HR-Projekte/ft-Hochregallager-und-ft-3-Achs-Roboter/blob/main/Dokumentation/Menue-Ablauf.pdf)
 
 ## Video
-
-Eine Vorstellung des Hochregallagers und seiner Steuerung ist auf YouTube zu sehen:  
-[Video zum fischertechnik Hochregallager mit ftDuino](https://www.youtube.com/watch?v=UzXN1IyupY0)
-
+Eine Vorstellung des 3-Achs-Roboters und seiner Steuerung ist auf YouTube zu sehen:  
+[Video zum fischertechnik 3-Achs-Roboter mit ftDuino](https://www.youtube.com/watch?v=2f_-ZYLpYPQ)
