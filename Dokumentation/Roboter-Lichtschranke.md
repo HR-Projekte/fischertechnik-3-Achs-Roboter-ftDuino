@@ -15,7 +15,8 @@ Der Metallsensor an I6 erkennt metallene Gegenstände auf dem Umsetzer des Robot
 
 Der Umsetzer wurde um eine Lichtschranke an Eingang I7 ergänzt. Sie besteht aus einer Linsenlampe (Art.-Nr. 37875) und einem Fototransistor (Art.-Nr. 036134), beide von fischertechnik.
 Damit können auch Kunststoffteile erkannt werden, sofern sie den Lichtstrahl ausreichend unterbrechen.  
-Die für die Lichtschranke benötigten Bauteile sind in der folgenden Datei aufgeführt: [Stückliste Lichtschranke](../Stücklisten/Einzelteile-Lichtschranke.pdf)
+Der [Schaltplan](Schaltplan-Metall-u-Plast.jpg) zur Installation der Lichtschranke.   
+Die für die Lichtschranke benötigten Bauteile [Stückliste Lichtschranke](../Stücklisten/Einzelteile-Lichtschranke.pdf).
 
 ## Softwareänderungen
 
@@ -49,3 +50,5 @@ Während ein Bewegungsablauf läuft, wird kein weiterer gestartet. Gleichzeitig 
 Die Bewegungsabläufe müssen im jeweiligen Positionsspeicher hinterlegt sein. Die bisherigen Positionen von PsA und PsB bleiben erhalten; PsC ist zunächst leer.
 
 Die Erweiterung wurde im Zusammenspiel mit dem Hochregallager getestet. Die Erkennung von Metall- und Kunststoffteilen sowie die bestehenden Funktionen arbeiteten dabei ohne erkennbare Probleme.
+
+[Zurück zur Dokumentation](../README.md#dokumentation)
