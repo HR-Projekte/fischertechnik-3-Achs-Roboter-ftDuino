@@ -1,18 +1,8 @@
-/* Version vom 25.09.2026
-
-   Steuerprogramm fuer den ft-3-Achs-Roboter mit Displayfuehrung,
-   Referenzfahrt sowie zwei getrennten Positionsspeichern PsA und PsB.
-
-   Diese Version ist fuer den Stand-alone-Betrieb und fuer den
-   Kombibetrieb mit dem ft-Hochregallager geeignet. Die normalen
-   externen Starts bleiben unveraendert:
-   I6 startet Positionsspeicher PsA.
-   I5 startet Positionsspeicher PsB.
-
-   Fuer den Kombibetrieb wurde zusaetzlich der Analog-In I8 ergaenzt.
-   Dazu wird HRL-Ausgang O8 mit Roboter-Eingang I8 verbunden.
-   I8 wird als Spannungseingang gelesen und startet denselben Ablauf
-   wie I5, also Positionsspeicher PsB.
+/* Version vom 20.10.2026
+   Drei Positionsspeicher mit je 18 Positionen.
+   I6 startet PsA; I7 LOW bei inaktivem I6 startet PsC.
+   Die Teilezuordnung bleibt bis zum stabil freien Umsetzer erhalten.
+   I8 (Spannung >= 5000 mV) startet PsB. I5 wird nicht verwendet.
 */
 #include <Ftduino.h>
 #include "Wire.h"
@@ -53,13 +43,12 @@ constexpr char TASTE_LOESCHE_SPEICHER = 'C';
 constexpr char TASTE_EXPORT_SPEICHER  = 'B';
 constexpr char TASTE_SPEICHERWAHL     = '8';
 constexpr char TASTE_EINZELFAHRT      = '3';
-constexpr char TASTE_DAUERFAHRT       = '6';
 
-constexpr int SPEICHER_MAX_POS = 24;
+constexpr int SPEICHER_MAX_POS = 18;
 constexpr int SPEICHER_POS_UNBELEGT = 32767;
 
 constexpr int START_PSA_SCHALTER = Ftduino::I6;
-constexpr int START_PSB_SCHALTER = Ftduino::I5;
+constexpr int TEILE_LICHTSCHRANKE = Ftduino::I7;
 constexpr int START_PSB_MV_EINGANG = Ftduino::I8;
 constexpr int START_PSB_SCHWELLE_MILLIVOLT = 5000;
 constexpr unsigned long STARTUP_DELAY_MS = 1000;
@@ -80,13 +69,12 @@ struct HandTasten {
 };
 
 struct Umsetzplatz {
-  int sensorPort;
-  bool belegtAlt;
-  bool rohBelegt;
   bool positiveFlanke;
   bool vomRoboterBelegt;
-  unsigned long zustandswechselSeit;
 };
+
+enum TeileArt { TEIL_FREI, TEIL_METALL, TEIL_KUNSTSTOFF };
+TeileArt erkanntesTeil = TEIL_FREI;
 
 struct ModulEintrag {
   Antriebsmodul* modul;
@@ -114,15 +102,10 @@ enum Betriebsart {
   SPEICHER
 };
 
-enum AutomatikModus {
-  AUTO_AUS,
-  AUTO_EINMAL,
-  AUTO_DAUER
-};
-
 enum PositionsSpeicher {
   SPEICHER_A,
-  SPEICHER_B
+  SPEICHER_B,
+  SPEICHER_C
 };
 
 Betriebsart betriebsartAktuell = HAND;
@@ -138,22 +121,15 @@ bool speicherExportOk = false;
 bool menueAuswahlAktiv = false;
 bool referenzAnzeigeBisLoslassen = false;
 bool externerAblaufAktiv = false;
-bool statusLedBlinkt = false;
 bool startPsbMvBelegtAlt = false;
-unsigned long statusLedBlinkSeit = 0;
 
-AutomatikModus automatikModus = AUTO_AUS;
 PositionsSpeicher aktiverPositionsSpeicher = SPEICHER_A;
 int automatikIndex = 0;
 
 bool referenzStatusAlt [ANZAHL_ANTRIEBSMODULE] = {false};
 
-Umsetzplatz umsetzplatzA = {
-  START_PSA_SCHALTER, false, false, false, false, 0
-};
-Umsetzplatz umsetzplatzB = {
-  START_PSB_SCHALTER, false, false, false, false, 0
-};
+Umsetzplatz umsetzplatzA = {false, false};
+Umsetzplatz umsetzplatzB = {false, false};
 
 // --------------------------------------------------
 // Hardware
@@ -167,12 +143,10 @@ SSD1306AsciiAvrI2c oled;
 // Positionsspeicher
 // --------------------------------------------------
 int posSpeicherA[SPEICHER_MAX_POS][ANZAHL_ANTRIEBSMODULE] = {
-  // Hier die mit Speicher-Export erzeugte Liste einfuegen.
-  // Muss 24 Zeilen mit je 4 Werten enthalten.
-  // Reihenfolge: Greifer, Ausleger, Turm, Karussell
+  // 18 Zeilen: Greifer, Ausleger, Turm, Karussell
   {0,0,0,0},
   {0,0,3068,2284},
-  {0,75,3068,2284},
+  {6,75,3068,2284}, // Lichtschranke: Greifer etwas schliessen 
   {19,75,3068,2284},
   {19,75,1887,2284},
   {19,0,1887,2284},
@@ -187,18 +161,11 @@ int posSpeicherA[SPEICHER_MAX_POS][ANZAHL_ANTRIEBSMODULE] = {
   {32767,32767,32767,32767},
   {32767,32767,32767,32767},
   {32767,32767,32767,32767},
-  {32767,32767,32767,32767},
-  {32767,32767,32767,32767},
-  {32767,32767,32767,32767},
-  {32767,32767,32767,32767},
-  {32767,32767,32767,32767},
-  {32767,32767,32767,32767},
   {32767,32767,32767,32767}
 };
 
 int posSpeicherB[SPEICHER_MAX_POS][ANZAHL_ANTRIEBSMODULE] = {
-  // Hier die mit Speicher-Export erzeugte Liste einfuegen.
-  // Muss 24 Zeilen mit je 4 Werten enthalten.
+  // 18 Zeilen: Greifer, Ausleger, Turm, Karussell
   {0,0,0,0},
   {10,103,3269,79},
   {19,103,3269,79},
@@ -215,6 +182,23 @@ int posSpeicherB[SPEICHER_MAX_POS][ANZAHL_ANTRIEBSMODULE] = {
   {32767,32767,32767,32767},
   {32767,32767,32767,32767},
   {32767,32767,32767,32767},
+  {32767,32767,32767,32767},
+  {32767,32767,32767,32767}
+};
+
+// PsC ist anfangs leer und kann im Handbetrieb aufgezeichnet werden.
+int posSpeicherC[SPEICHER_MAX_POS][ANZAHL_ANTRIEBSMODULE] = {
+  // Reihenfolge: Greifer, Ausleger, Turm, Karussell
+  {0,0,0,0},
+  {0,0,3068,2284},
+  {6,75,3068,2284},  // Lichtschranke: Greifer etwas schliessen 
+  {19,75,3068,2284},
+  {19,75,1887,2284},
+  {19,75,1887,2854},
+  {19,97,3021,2854},
+  {10,97,3021,2854},
+  {10,0,0,2854},
+  {0,0,0,0},
   {32767,32767,32767,32767},
   {32767,32767,32767,32767},
   {32767,32767,32767,32767},
@@ -260,11 +244,11 @@ void hand(char,bool);
 void druckeHandCount(char);
 void automatik(char,bool);
 void resetAutomatik();
-void startAutomatik(AutomatikModus);
+void startAutomatik();
 void beendeAutomatik();
 void starteExterneAutomatik();
 void aktualisiereUmsetzplaetze();
-void aktualisiereUmsetzplatz(Umsetzplatz&);
+void aktualisierePsbMvEingang();
 void aktualisiereStatusLed();
 void entsperreExternenZielplatz();
 void speicher(char,bool);
@@ -287,7 +271,7 @@ void setup() {
 
   ftduino.init();
   ftduino.input_set_mode(START_PSA_SCHALTER, Ftduino::SWITCH);
-  ftduino.input_set_mode(START_PSB_SCHALTER, Ftduino::SWITCH);
+  ftduino.input_set_mode(TEILE_LICHTSCHRANKE, Ftduino::SWITCH);
   ftduino.input_set_mode(START_PSB_MV_EINGANG, Ftduino::VOLTAGE);
   pinMode(LED_BUILTIN, OUTPUT);
   Serial.begin(115200);
@@ -575,13 +559,7 @@ void automatik(char taste, bool tastenFlanke) {
   // --------------------------------------------------
   if (tastenFlanke && !automatikAktiv) {
     if (taste == TASTE_EINZELFAHRT) {
-      startAutomatik(AUTO_EINMAL);
-      positionGesetzt = false;
-      wartezeitAktiv = false;
-      return;
-    }
-    else if (taste == TASTE_DAUERFAHRT) {
-      startAutomatik(AUTO_DAUER);
+      startAutomatik();
       positionGesetzt = false;
       wartezeitAktiv = false;
       return;
@@ -595,9 +573,7 @@ void automatik(char taste, bool tastenFlanke) {
     return;
   }
 
-  if (tastenFlanke &&
-      ((taste == TASTE_EINZELFAHRT && automatikModus == AUTO_EINMAL) ||
-       (taste == TASTE_DAUERFAHRT && automatikModus == AUTO_DAUER))) {
+  if (tastenFlanke && taste == TASTE_EINZELFAHRT) {
     automatikStopAngefordert = true;
     displayAutomatik();
   }
@@ -618,10 +594,6 @@ void automatik(char taste, bool tastenFlanke) {
 
       wartezeitAktiv = false;
       automatikIndex++;
-
-      if (automatikIndex >= gespeichertePositionen && automatikModus == AUTO_DAUER) {
-        automatikIndex = 0;
-      }
 
       positionGesetzt = false;
       displayAutomatik();
@@ -649,7 +621,7 @@ void automatik(char taste, bool tastenFlanke) {
   }
 
   // --------------------------------------------------
-  // Prüfen ob alle Achsen fertig
+  // PrÃ¼fen ob alle Achsen fertig
   // --------------------------------------------------
   bool fertig = true;
 
@@ -675,12 +647,11 @@ void resetAutomatik() {
 
   automatikAktiv = false;
   automatikStopAngefordert = false;
-  automatikModus = AUTO_AUS;
   automatikIndex = 0;
   entsperreExternenZielplatz();
 }
 
-void startAutomatik(AutomatikModus modus) {
+void startAutomatik() {
   if (getGespeichertePositionen() == 0) {
     displayAutomatik();
     return;
@@ -688,7 +659,6 @@ void startAutomatik(AutomatikModus modus) {
 
   automatikAktiv = true;
   automatikStopAngefordert = false;
-  automatikModus = modus;
   automatikIndex = 0;
   displayAutomatik();
 
@@ -706,7 +676,7 @@ void starteExterneAutomatik() {
   }
 
   if (umsetzplatzA.positiveFlanke && !umsetzplatzA.vomRoboterBelegt) {
-    waehlePositionsSpeicher(SPEICHER_A);
+    waehlePositionsSpeicher(erkanntesTeil == TEIL_METALL ? SPEICHER_A : SPEICHER_C);
     if (getGespeichertePositionen() == 0) {
       displayAutomatik();
       return;
@@ -714,7 +684,7 @@ void starteExterneAutomatik() {
 
     umsetzplatzB.vomRoboterBelegt = true;
     externerAblaufAktiv = true;
-    startAutomatik(AUTO_EINMAL);
+    startAutomatik();
   }
   else if (umsetzplatzB.positiveFlanke && !umsetzplatzB.vomRoboterBelegt) {
     waehlePositionsSpeicher(SPEICHER_B);
@@ -725,69 +695,61 @@ void starteExterneAutomatik() {
 
     umsetzplatzA.vomRoboterBelegt = true;
     externerAblaufAktiv = true;
-    startAutomatik(AUTO_EINMAL);
+    startAutomatik();
   }
 }
 
 void aktualisiereUmsetzplaetze() {
-  aktualisiereUmsetzplatz(umsetzplatzA);
-  aktualisiereUmsetzplatz(umsetzplatzB);
   aktualisierePsbMvEingang();
   aktualisiereStatusLed();
 }
 
 void aktualisiereStatusLed() {
-  if (!umsetzplatzA.belegtAlt) {
-    statusLedBlinkt = false;
-    digitalWrite(LED_BUILTIN, LOW);
-    return;
-  }
-
-  if (umsetzplatzA.vomRoboterBelegt && !statusLedBlinkt) {
-    statusLedBlinkt = true;
-    statusLedBlinkSeit = millis();
-  }
-
-  if (!statusLedBlinkt) {
-    digitalWrite(LED_BUILTIN, HIGH);
-    return;
-  }
-
+  // Gemeinsame Erkennung fuer LED und externe Startauswahl.
+  // Anzeige: Metall blinkt, Kunststoff leuchtet, frei ist aus.
+  // Die Zuordnung bleibt bis zu einem stabil freien Umsetzer erhalten.
+  static TeileArt kandidatAlt = TEIL_FREI;
+  static unsigned long kandidatSeit = 0;
+  static unsigned long blinkSeit = 0;
   unsigned long jetzt = millis();
-  bool ledAn = ((jetzt - statusLedBlinkSeit) / STATUS_LED_BLINK_MS) % 2 == 0;
+  umsetzplatzA.positiveFlanke = false;
+
+  bool metall = ftduino.input_get(START_PSA_SCHALTER) != 0;
+  bool lichtschrankeUnterbrochen = ftduino.input_get(TEILE_LICHTSCHRANKE) == 0;
+  TeileArt kandidat = metall ? TEIL_METALL
+    : (lichtschrankeUnterbrochen ? TEIL_KUNSTSTOFF : TEIL_FREI);
+
+  if (kandidat != kandidatAlt) {
+    kandidatAlt = kandidat;
+    kandidatSeit = jetzt;
+  }
+
+  if (jetzt - kandidatSeit >= SENSOR_ENTPRELLZEIT_MS) {
+    if (kandidat == TEIL_FREI) {
+      erkanntesTeil = TEIL_FREI;
+      // Eine laufende Anlieferung durch PsB darf die Sperre nicht loesen.
+      if (!externerAblaufAktiv || aktiverPositionsSpeicher != SPEICHER_B) {
+        umsetzplatzA.vomRoboterBelegt = false;
+      }
+    }
+    else if (erkanntesTeil == TEIL_FREI) {
+      erkanntesTeil = kandidat;
+      umsetzplatzA.positiveFlanke = true;
+      blinkSeit = jetzt;
+    }
+  }
+
+  bool ledAn = erkanntesTeil == TEIL_KUNSTSTOFF ||
+    (erkanntesTeil == TEIL_METALL &&
+     ((jetzt - blinkSeit) / STATUS_LED_BLINK_MS) % 2 == 0);
   digitalWrite(LED_BUILTIN, ledAn ? HIGH : LOW);
-}
-
-void aktualisiereUmsetzplatz(Umsetzplatz& platz) {
-  bool belegt = ftduino.input_get(platz.sensorPort) != 0;
-  platz.positiveFlanke = false;
-
-  if (belegt != platz.rohBelegt) {
-    platz.rohBelegt = belegt;
-    platz.zustandswechselSeit = millis();
-  }
-
-  if (platz.rohBelegt == platz.belegtAlt ||
-      millis() - platz.zustandswechselSeit < SENSOR_ENTPRELLZEIT_MS) {
-    return;
-  }
-
-  platz.positiveFlanke = platz.rohBelegt;
-
-  if (!platz.rohBelegt) {
-    platz.vomRoboterBelegt = false;
-  }
-
-  platz.belegtAlt = platz.rohBelegt;
 }
 
 void aktualisierePsbMvEingang() {
   bool belegt = ftduino.input_get(START_PSB_MV_EINGANG) >= START_PSB_SCHWELLE_MILLIVOLT;
-  if (belegt && !startPsbMvBelegtAlt) {
-    umsetzplatzB.positiveFlanke = true;
-  }
+  umsetzplatzB.positiveFlanke = belegt && !startPsbMvBelegtAlt;
 
-  if (!belegt && !umsetzplatzB.belegtAlt) {
+  if (!belegt && (!externerAblaufAktiv || aktiverPositionsSpeicher == SPEICHER_B)) {
     umsetzplatzB.vomRoboterBelegt = false;
   }
 
@@ -799,7 +761,7 @@ void entsperreExternenZielplatz() {
     return;
   }
 
-  if (aktiverPositionsSpeicher == SPEICHER_A) {
+  if (aktiverPositionsSpeicher != SPEICHER_B) {
     umsetzplatzB.vomRoboterBelegt = false;
   }
   else {
@@ -841,7 +803,7 @@ void speicher(char taste, bool tastenFlanke) {
 // REFERENZFAHRT
 // --------------------------------------------------
 // Zuert wird der Ausleger referenziert (Endschalter I2), dann
-// können die drei anderen Referenzpositionen angefahren werden.
+// kÃ¶nnen die drei anderen Referenzpositionen angefahren werden.
 bool referenzfahrtUpdate(char taste, bool menueNachFertig) {
   static bool ausleger_hat_referenziert = false;
   static bool referenzTasteWarGedrueckt = false;
@@ -994,19 +956,23 @@ int getGespeichertePositionen() {
 }
 
 char getSpeicherKennung() {
-  return aktiverPositionsSpeicher == SPEICHER_A ? 'A' : 'B';
+  return aktiverPositionsSpeicher == SPEICHER_A ? 'A'
+    : (aktiverPositionsSpeicher == SPEICHER_B ? 'B' : 'C');
 }
 
 void waehlePositionsSpeicher(PositionsSpeicher positionsSpeicher) {
   aktiverPositionsSpeicher = positionsSpeicher;
   ptrPosSpeicher = positionsSpeicher == SPEICHER_A
     ? posSpeicherA
-    : posSpeicherB;
+    : (positionsSpeicher == SPEICHER_B ? posSpeicherB : posSpeicherC);
 }
 
 void wechselPositionsSpeicher() {
   if (aktiverPositionsSpeicher == SPEICHER_A) {
     waehlePositionsSpeicher(SPEICHER_B);
+  }
+  else if (aktiverPositionsSpeicher == SPEICHER_B) {
+    waehlePositionsSpeicher(SPEICHER_C);
   }
   else {
     waehlePositionsSpeicher(SPEICHER_A);
@@ -1150,7 +1116,7 @@ void displayHand() {
 // DISPLAY AUTOMATIK
 // --------------------------------------------------
 void displayAutomatik(bool komplettNeu) {
-  static AutomatikModus letzterModus = AUTO_AUS;
+  static bool zuletztAktiv = false;
   static char letzteSpeicherKennung = '\0';
   int aktuellePosition = 0;
   int gespeichertePositionen = getGespeichertePositionen();
@@ -1160,16 +1126,16 @@ void displayAutomatik(bool komplettNeu) {
     aktuellePosition = automatikIndex + 1;
   }
 
-  if (komplettNeu || automatikModus != letzterModus ||
+  if (komplettNeu || automatikAktiv != zuletztAktiv ||
       speicherKennung != letzteSpeicherKennung) {
     oled.clear();
     oled.println(F("A U T O M A T I K"));
     oled.println();
 
     oled.println(F("Einzel Start      3"));
-    oled.println(F("Dauer  Start      6"));
-    oled.println(F("Ext.   PsA/PsB I6/I5"));
-    oled.println(F("Ext.   PsB analog I8"));
+    oled.println(F("Ext. PsA         I6"));
+    oled.println(F("Ext. PsC         I7"));
+    oled.println(F("Ext. PsB analog  I8"));
     oled.println();
 
     oled.setCursor(0,7);
@@ -1177,7 +1143,7 @@ void displayAutomatik(bool komplettNeu) {
     oled.print(speicherKennung);
     oled.print(':');
 
-    letzterModus = automatikModus;
+    zuletztAktiv = automatikAktiv;
     letzteSpeicherKennung = speicherKennung;
   }
 
