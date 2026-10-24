@@ -21,8 +21,10 @@ Der mechanische Aufbau und die grundlegende Verdrahtung des 3-Achs-Roboters erfo
 
 Die im Video verwendete
 [Hardware-Erweiterung](https://github.com/HR-Projekte/ft-Hochregallager-und-ft-3-Achs-Roboter/blob/main/Bilder/I2C-Konfiguration.jpg?raw=true) und Schaltplan.  
-Optionale Ergänzung:
-[Hardware Option](Bilder/Hardware-option.jpg)  
+Optionale Ergänzung:  
+* [Metallsensor am Umsetzer](Bilder/Hardware-option.jpg)  
+* [Lichtschranke am Umsetzer](Bilder/Umsetzer-mit-Lichtschranke.png) Alles weitere hierzu unter [Dokumentation](#dokumentation).
+
 Kleine aber wirksame 
 [Ergänzung am Greifer](https://github.com/HR-Projekte/ft-Hochregallager-und-ft-3-Achs-Roboter/blob/main/Bilder/Greifer-manipuliert.jpg)  
 und die stl-Datei für das
@@ -54,7 +56,8 @@ Nach diesem Prinzip könnten anschließend weitere Funktionsbereiche des Program
 
 ## Dokumentation
 Ein Flussdiagramm zur 
-[Menüstruktur](https://github.com/HR-Projekte/ft-Hochregallager-und-ft-3-Achs-Roboter/blob/main/Dokumentation/Menue-Ablauf.pdf)
+[Menüstruktur](https://github.com/HR-Projekte/ft-Hochregallager-und-ft-3-Achs-Roboter/blob/main/Dokumentation/Menue-Ablauf.pdf)  
+Erkennung von Plastteilen am Umsetzer mittels [Lichtschranke](Dokumentation/Roboter-Lichtschranke.md) mit Stückliste.
 
 ## Video
 Eine Vorstellung des 3-Achs-Roboters und seiner Steuerung ist auf YouTube zu sehen:  
