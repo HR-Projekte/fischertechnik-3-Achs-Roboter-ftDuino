@@ -40,8 +40,7 @@ Bauteile für die Steuerung
 [Einzelteile-Steuerung](https://github.com/HR-Projekte/ft-Hochregallager-und-ft-3-Achs-Roboter/blob/main/Stücklisten/Einzelteile-Steuerung.pdf)
 
 ## Software
-Das Steuerungsprogramm für den 3-Achs-Roboter ist als Arduino-Sketch abgelegt.  
-[3-Achs-Roboter](Programme/)
+Das Steuerungsprogramm für den 3-Achs-Roboter ist als Arduino-Sketch abgelegt. [3-Achs-Roboter](Programme/)
 
 #### Weiterentwicklung
 
